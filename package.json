@@ -1,5 +1,5 @@
 {
-  "name": "vite-vue-typescript-starter",
+  "name": "simp-o-meter",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "date-fns": "^2.29.3",
     "vue": "^3.2.40"
   },
   "devDependencies": {
