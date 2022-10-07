@@ -1,23 +1,13 @@
-import { parseISO, isAfter, sub } from 'date-fns';
+import { isAfter, parseISO, sub } from 'date-fns';
 
-export function handleFileUpload(event: Event, app: any) {
-	console.log('handleFileUpload');
-	const file: File = app.file;
-	if (!file) return;
+export interface SimpChannel {
+	name: string;
+	viewCount: number;
+}
 
-	// validate that file is a .json file
-	if (file.type !== 'application/json') {
-		alert('Please upload a .json file.');
-		return;
-	}
-
-	// print json file to console
-	const reader = new FileReader();
-	reader.onload = (event: any) => {
-		const json = JSON.parse(event.target.result);
-		parseWatchHistory(json);
-	};
-	reader.readAsText(file);
+export interface SimpMeterResult {
+	scope: string;
+	channels: SimpChannel[];
 }
 
 export function toggleButton(event: Event, app: any) {
@@ -32,20 +22,58 @@ export function toggleButton(event: Event, app: any) {
 	}
 }
 
-function parseWatchHistory(videos: any) {
-	// parse json
-	let last_month = [];
-	for (let video of videos) {
-		if ('subtitles' in video && isAfter(parseISO(video.time), sub(parseISO(videos[0].time), { months: 1 }))) {
-			last_month.push(video.subtitles[0].name);
+// TODO: Rewrite this mess
+export function parseWatchHistory(videos: any): SimpMeterResult[] {
+	const lastMonth = [];
+	const lastYear = [];
+	const allTime = [];
+
+	for (const video of videos) {
+		if ('subtitles' in video) {
+			const time = parseISO(video.time);
+			const channel = video.subtitles[0].name;
+			if (isAfter(time, sub(parseISO(videos[0].time), { months: 1 }))) {
+				lastMonth.push(channel);
+			}
+			if (isAfter(time, sub(parseISO(videos[0].time), { years: 1 }))) {
+				lastYear.push(channel);
+			}
+			allTime.push(channel);
 		}
 	}
 
-	let data = last_month.reduce((a, b) => ((a[b] = (a[b] || 0) + 1), a), {});
-	data = Object.entries(data)
-		.sort((a, b) => (b[1] as any) - (a[1] as any))
-		.slice(0, 15);
-	alert(
-		`Top 15 most watched channels in the past month:\n${data.map((d: any) => d.join(' - ')).join(' Videos\n')} Videos`,
-	);
+	const lastMonthData = lastMonth.reduce((a, b) => ((a[b] = (a[b] || 0) + 1), a), {});
+	const lastYearData = lastYear.reduce((a, b) => ((a[b] = (a[b] || 0) + 1), a), {});
+	const allTimeData = allTime.reduce((a, b) => ((a[b] = (a[b] || 0) + 1), a), {});
+
+	console.table(lastMonthData);
+	console.table(lastYearData);
+	console.table(allTimeData);
+
+	return [
+		{
+			scope: 'Top 15 most watched channels in the past month:',
+			channels: Object.entries(lastMonthData)
+				.map(([name, viewCount]) => ({ name, viewCount }))
+				// @ts-ignore
+				.sort((a, b) => b.viewCount - a.viewCount)
+				.slice(0, 15) as SimpChannel[],
+		},
+		{
+			scope: 'Top 15 most watched channels in the past year:',
+			channels: Object.entries(lastYearData)
+				.map(([name, viewCount]) => ({ name, viewCount }))
+				// @ts-ignore
+				.sort((a, b) => b.viewCount - a.viewCount)
+				.slice(0, 15) as SimpChannel[],
+		},
+		{
+			scope: 'Top 15 most watched channels of all time:',
+			channels: Object.entries(allTimeData)
+				.map(([name, viewCount]) => ({ name, viewCount }))
+				// @ts-ignore
+				.sort((a, b) => b.viewCount - a.viewCount)
+				.slice(0, 15) as SimpChannel[],
+		},
+	];
 }
